@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plural Pronunciation Challenge</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --secondary: #f39c12;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --bg: #2c3e50;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+        }
+
+        /* UI Top Bar */
+        #ui-bar {
+            width: 100%;
+            max-width: 600px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            background: #34495e;
+            font-size: 1.2rem;
+            font-weight: bold;
+            box-sizing: border-box;
+            border-bottom: 4px solid var(--primary);
+        }
+
+        /* Game Stage */
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 70vh;
+            background: linear-gradient(to bottom, #2c3e50, #000000);
+            overflow: hidden;
+            border: 2px solid #444;
+        }
+
+        /* Overlay Screens */
+        #overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Words falling */
+        .word-ball {
+            position: absolute;
+            padding: 10px 20px;
+            background: white;
+            color: #333;
+            border-radius: 20px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            white-space: nowrap;
+            transition: transform 0.1s;
+        }
+
+        /* Player Bucket */
+        #player-bucket {
+            position: absolute;
+            bottom: 80px;
+            width: 33.33%;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: left 0.15s ease-out;
+        }
+
+        .bucket-visual {
+            font-size: 50px;
+            filter: drop-shadow(0 0 10px var(--primary));
+        }
+
+        /* Bins at bottom */
+        #bins-container {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 80px;
+            display: flex;
+        }
+
+        .bin {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-top: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .bin-s { background: #c0392b; }
+        .bin-z { background: #2980b9; }
+        .bin-iz { background: #8e44ad; }
+
+        /* Controls */
+        #controls {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            gap: 5px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background: var(--primary);
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn:active { transform: scale(0.95); background: #357abd; }
+        .btn-download { background: var(--success); margin-top: 10px; }
+
+        /* Feedback Flashes */
+        .flash-green { animation: flashG 0.4s; }
+        .flash-red { animation: flashR 0.4s; }
+        @keyframes flashG { 0%, 100% { background: inherit; } 50% { background: #2ecc7166; } }
+        @keyframes flashR { 0%, 100% { background: inherit; } 50% { background: #e74c3c66; } }
+    </style>
+</head>
+<body>
+
+<div id="ui-bar">
+    <span>Score: <span id="score">0</span></span>
+    <span>Unit 2: My House</span>
+    <span>Lives: <span id="lives">3</span></span>
+</div>
+
+<div id="game-container">
+    <div id="overlay">
+        <h1>Plural Pronunciation<br>Challenge</h1>
+        <p>Catch the words in the correct bin!</p>
+        <p>Use <b>Arrow Keys</b> or <b>Buttons Below</b></p>
+        <button class="btn" onclick="startGame()">START GAME</button>
+        <button class="btn btn-download" onclick="downloadGame()">📦 Download Offline Game</button>
+    </div>
+
+    <div id="player-bucket" style="left: 33.33%;">
+        <div class="bucket-visual">📥</div>
+    </div>
+
+    <div id="bins-container">
+        <div class="bin bin-s">/s/</div>
+        <div class="bin bin-z">/z/</div>
+        <div class="bin bin-iz">/iz/</div>
+    </div>
+</div>
+
+<div id="controls">
+    <button class="btn bin-s" onmousedown="moveBucket(0)">/s/</button>
+    <button class="btn bin-z" onmousedown="moveBucket(1)">/z/</button>
+    <button class="btn bin-iz" onmousedown="moveBucket(2)">/iz/</button>
+</div>
+
+<script>
+    // WORD DATA (English 6 - Unit 2)
+    const words = [
+        { text: "Lamps", type: "s" },
+        { text: "Books", type: "s" },
+        { text: "Apartments", type: "s" },
+        { text: "Toilets", type: "s" },
+        { text: "Sinks", type: "s" },
+        { text: "Chairs", type: "z" },
+        { text: "Beds", type: "z" },
+        { text: "Wardrobes", type: "z" },
+        { text: "Tables", type: "z" },
+        { text: "Rooms", type: "z" },
+        { text: "Pillows", type: "z" },
+        { text: "Houses", type: "iz" },
+        { text: "Couches", type: "iz" },
+        { text: "Fridges", type: "iz" },
+        { text: "Dishes", type: "iz" },
+        { text: "Boxes", type: "iz" }
+    ];
+
+    let score = 0;
+    let lives = 3;
+    let currentLane = 1; // 0, 1, 2
+    let gameActive = false;
+    let fallingWord = null;
+    let speed = 2.5;
+    let animationFrame;
+
+    const bucket = document.getElementById('player-bucket');
+    const scoreEl = document.getElementById('score');
+    const livesEl = document.getElementById('lives');
+    const overlay = document.getElementById('overlay');
+    const container = document.getElementById('game-container');
+
+    // Movement Logic
+    function moveBucket(lane) {
+        currentLane = lane;
+        bucket.style.left = (lane * 33.33) + "%";
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "ArrowLeft" && currentLane > 0) moveBucket(currentLane - 1);
+        if (e.key === "ArrowRight" && currentLane < 2) moveBucket(currentLane + 1);
+    });
+
+    function startGame() {
+        score = 0;
+        lives = 3;
+        speed = 2.5;
+        scoreEl.innerText = score;
+        livesEl.innerText = lives;
+        overlay.classList.add('hidden');
+        gameActive = true;
+        if(fallingWord) fallingWord.el.remove();
+        fallingWord = null;
+        spawnWord();
+        gameLoop();
+    }
+
+    function spawnWord() {
+        if (!gameActive) return;
+        
+        const randomWord = words[Math.floor(Math.random() * words.length)];
+        const lane = Math.floor(Math.random() * 3);
+        
+        const wordEl = document.createElement('div');
+        wordEl.className = 'word-ball';
+        wordEl.innerText = randomWord.text;
+        wordEl.dataset.type = randomWord.type;
+        
+        // Center the word in the lane
+        wordEl.style.left = `calc(${(lane * 33.33) + 16.66}% - 40px)`;
+        wordEl.style.top = "-50px";
+        
+        container.appendChild(wordEl);
+        fallingWord = {
+            el: wordEl,
+            y: -50,
+            lane: lane,
+            type: randomWord.type
+        };
+    }
+
+    function gameLoop() {
+        if (!gameActive) return;
+
+        if (fallingWord) {
+            fallingWord.y += speed;
+            fallingWord.el.style.top = fallingWord.y + "px";
+
+            // Collision Detection
+            const bucketY = container.offsetHeight - 140; 
+            if (fallingWord.y >= bucketY && fallingWord.y <= bucketY + speed + 5) {
+                if (fallingWord.lane === currentLane) {
+                    checkAnswer();
+                }
+            }
+
+            // Missed Word
+            if (fallingWord.y > container.offsetHeight - 50) {
+                loseLife();
+                removeWord();
+            }
+        }
+
+        animationFrame = requestAnimationFrame(gameLoop);
+    }
+
+    function checkAnswer() {
+        const types = ['s', 'z', 'iz'];
+        const caughtType = types[currentLane];
+        
+        if (fallingWord.type === caughtType) {
+            score += 10;
+            scoreEl.innerText = score;
+            speed += 0.15; // Gradually get harder
+            container.classList.add('flash-green');
+            setTimeout(() => container.classList.remove('flash-green'), 400);
+        } else {
+            loseLife();
+            container.classList.add('flash-red');
+            setTimeout(() => container.classList.remove('flash-red'), 400);
+        }
+        removeWord();
+    }
+
+    function loseLife() {
+        lives--;
+        livesEl.innerText = lives;
+        if (lives <= 0) gameOver();
+    }
+
+    function removeWord() {
+        if (fallingWord) {
+            fallingWord.el.remove();
+            fallingWord = null;
+            setTimeout(spawnWord, 400);
+        }
+    }
+
+    function gameOver() {
+        gameActive = false;
+        cancelAnimationFrame(animationFrame);
+        overlay.classList.remove('hidden');
+        overlay.innerHTML = `
+            <h1 style="color:var(--danger)">Game Over!</h1>
+            <p>You scored ${score} points.</p>
+            <button class="btn" onclick="startGame()">TRY AGAIN</button>
+            <button class="btn btn-download" onclick="downloadGame()">📦 Save Game Offline</button>
+        `;
+    }
+
+    function downloadGame() {
+        const htmlContent = `<!DOCTYPE html>\n${document.documentElement.outerHTML}`;
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'PronunciationGame_Unit2.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>
